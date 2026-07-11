@@ -4,8 +4,17 @@
  */
 
 import { EaseIMServer } from './server.js';
+import { startHttpServer } from './http.js';
 
 async function main() {
+  const transport = (process.env.MCP_TRANSPORT ?? 'stdio').toLowerCase();
+  if (transport === 'http' || transport === 'streamable-http') {
+    await startHttpServer();
+    return;
+  }
+  if (transport !== 'stdio') {
+    throw new Error(`不支持的 MCP_TRANSPORT: ${transport}（可选: stdio, http）`);
+  }
   const server = new EaseIMServer();
   await server.start();
 }

@@ -2,6 +2,8 @@
 
 提供环信 IM SDK 文档查询、源码搜索、智能助手和集成诊断能力的 MCP Server。
 
+支持两种传输方式：本地集成使用 stdio；服务器部署使用 Streamable HTTP。Docker 部署和远程客户端配置见仓库根目录 `README.md`。
+
 ## 功能概览
 
 ```

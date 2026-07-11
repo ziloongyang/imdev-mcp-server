@@ -1,5 +1,64 @@
 # 安装方案
 
+## Docker 部署（Streamable HTTP）
+
+服务保留原有 stdio 模式，同时支持 MCP 推荐的 Streamable HTTP 远程传输。HTTP 端点默认为 `http://服务器:3000/mcp`，健康检查为 `/health`。
+
+```bash
+cp .env.example .env
+# 编辑 .env，务必替换为高强度随机 MCP_AUTH_TOKEN
+docker compose up -d --build
+curl http://127.0.0.1:3000/health
+```
+
+客户端连接示例：
+
+```json
+{
+  "mcpServers": {
+    "easeim": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
+```
+
+公网部署建议在容器前使用 Nginx、Caddy 或云负载均衡终止 HTTPS，并将请求反向代理到 `127.0.0.1:3000`。SSE 流式响应需要关闭代理缓冲并延长读取超时，例如 Nginx location：
+
+```nginx
+location /mcp {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+可用环境变量：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MCP_TRANSPORT` | `stdio` | 设为 `http` 或 `streamable-http` 开启远程服务 |
+| `HOST` / `PORT` | `0.0.0.0` / `3000` | HTTP 监听地址和端口 |
+| `MCP_PATH` | `/mcp` | MCP HTTP 路径 |
+| `MCP_AUTH_TOKEN` | 空 | 可选 Bearer Token；公网部署必须配置或由网关鉴权 |
+| `CORS_ALLOWED_ORIGINS` | 空 | 浏览器允许的 Origin，逗号分隔 |
+| `HTTP_BODY_LIMIT` | `2mb` | JSON 请求体大小上限 |
+
+不使用 Docker 时，可运行：
+
+```bash
+cd easeim-mcp-server
+npm install
+npm run build
+MCP_TRANSPORT=http MCP_AUTH_TOKEN=YOUR_TOKEN npm start
+```
+
 
 ## 方案 1: GitHub 直接安装 (最快)
 

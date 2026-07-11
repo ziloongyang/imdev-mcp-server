@@ -4,6 +4,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -1804,9 +1805,13 @@ ${e.solutions.map((s: any, j: number) => `${j + 1}. ${s}`).join('\n')}
   /**
    * 启动服务器
    */
+  async connect(transport: Transport) {
+    await this.server.connect(transport);
+  }
+
   async start() {
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    await this.connect(transport);
 
     console.error('🚀 环信 IM SDK MCP Server 已启动');
     console.error('📚 文档索引已加载');

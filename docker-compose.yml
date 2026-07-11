@@ -1,0 +1,11 @@
+services:
+  easeim-mcp:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?请在 .env 中设置 MCP_AUTH_TOKEN}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
+    volumes:
+      - ./logs:/app/tmp
