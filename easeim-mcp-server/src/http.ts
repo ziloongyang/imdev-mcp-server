@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import express, { NextFunction, Request, Response } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 
 import { EaseIMServer } from './server.js';
 
@@ -53,15 +55,43 @@ export async function startHttpServer() {
     next();
   };
 
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-  });
-  const mcpServer = new EaseIMServer();
-  await mcpServer.connect(transport);
+  const sessions = new Map<string, {
+    transport: StreamableHTTPServerTransport;
+    server: EaseIMServer;
+  }>();
 
   app.all(path, authenticate, async (req, res) => {
     try {
-      await transport.handleRequest(req, res, req.body);
+      const sessionId = req.header('mcp-session-id');
+      let session = sessionId ? sessions.get(sessionId) : undefined;
+
+      if (!session && req.method === 'POST' && isInitializeRequest(req.body)) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: randomUUID,
+          onsessioninitialized: initializedSessionId => {
+            sessions.set(initializedSessionId, { transport, server: mcpServer });
+          },
+        });
+        const mcpServer = new EaseIMServer();
+        transport.onclose = () => {
+          if (transport.sessionId) {
+            sessions.delete(transport.sessionId);
+          }
+        };
+        await mcpServer.connect(transport);
+        session = { transport, server: mcpServer };
+      }
+
+      if (!session) {
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: '无效或缺失的 MCP Session ID' },
+          id: null,
+        });
+        return;
+      }
+
+      await session.transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error('MCP HTTP 请求处理失败:', error);
       if (!res.headersSent) {
@@ -84,7 +114,8 @@ export async function startHttpServer() {
 
   const shutdown = async () => {
     httpServer.close();
-    await transport.close();
+    await Promise.all([...sessions.values()].map(session => session.transport.close()));
+    sessions.clear();
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
