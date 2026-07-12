@@ -59,6 +59,7 @@ export async function startHttpServer() {
     transport: StreamableHTTPServerTransport;
     server: EaseIMServer;
   }>();
+  const statelessStreams = new Map<StreamableHTTPServerTransport, EaseIMServer>();
 
   app.all(path, authenticate, async (req, res) => {
     try {
@@ -98,6 +99,21 @@ export async function startHttpServer() {
         return;
       }
 
+      // 无状态 Streamable HTTP 客户端可以不携带 Session ID 建立 GET SSE 流。
+      if (!session && req.method === 'GET' && !sessionId) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+        });
+        const mcpServer = new EaseIMServer();
+        statelessStreams.set(transport, mcpServer);
+        transport.onclose = () => {
+          statelessStreams.delete(transport);
+        };
+        await mcpServer.connect(transport);
+        await transport.handleRequest(req, res);
+        return;
+      }
+
       if (!session) {
         const status = sessionId ? 404 : 400;
         res.status(status).json({
@@ -134,8 +150,12 @@ export async function startHttpServer() {
 
   const shutdown = async () => {
     httpServer.close();
-    await Promise.all([...sessions.values()].map(session => session.transport.close()));
+    await Promise.all([
+      ...[...sessions.values()].map(session => session.transport.close()),
+      ...[...statelessStreams.keys()].map(transport => transport.close()),
+    ]);
     sessions.clear();
+    statelessStreams.clear();
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
