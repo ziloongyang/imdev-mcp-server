@@ -99,9 +99,13 @@ export async function startHttpServer() {
       }
 
       if (!session) {
-        res.status(400).json({
+        const status = sessionId ? 404 : 400;
+        res.status(status).json({
           jsonrpc: '2.0',
-          error: { code: -32000, message: '无效或缺失的 MCP Session ID' },
+          error: {
+            code: -32000,
+            message: sessionId ? 'MCP Session 已过期或不存在，请重新初始化' : '缺失 MCP Session ID',
+          },
           id: null,
         });
         return;
