@@ -15,6 +15,7 @@ export async function startHttpServer() {
   const path = process.env.MCP_PATH ?? '/mcp';
   const bearerToken = process.env.MCP_AUTH_TOKEN;
   const allowedOrigins = parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
+  const enableJsonResponse = process.env.MCP_JSON_RESPONSE !== 'false';
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`PORT 必须是 1-65535 的整数，当前值: ${process.env.PORT}`);
@@ -69,6 +70,7 @@ export async function startHttpServer() {
       if (!session && req.method === 'POST' && isInitializeRequest(req.body)) {
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: randomUUID,
+          enableJsonResponse,
           onsessioninitialized: initializedSessionId => {
             sessions.set(initializedSessionId, { transport, server: mcpServer });
           },
@@ -88,6 +90,7 @@ export async function startHttpServer() {
       if (!session && req.method === 'POST' && !sessionId) {
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined,
+          enableJsonResponse,
         });
         const mcpServer = new EaseIMServer();
         await mcpServer.connect(transport);
@@ -103,6 +106,7 @@ export async function startHttpServer() {
       if (!session && req.method === 'GET' && !sessionId) {
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined,
+          enableJsonResponse,
         });
         const mcpServer = new EaseIMServer();
         statelessStreams.set(transport, mcpServer);

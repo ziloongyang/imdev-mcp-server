@@ -47,6 +47,7 @@ location /mcp {
 | `HOST` / `PORT` | `0.0.0.0` / `3000` | HTTP 监听地址和端口 |
 | `MCP_PATH` | `/mcp` | MCP HTTP 路径 |
 | `MCP_AUTH_TOKEN` | 空 | 可选 Bearer Token；公网部署必须配置或由网关鉴权 |
+| `MCP_JSON_RESPONSE` | `true` | HTTP POST 直接返回 JSON；设为 `false` 使用 SSE 流式响应 |
 | `CORS_ALLOWED_ORIGINS` | 空 | 浏览器允许的 Origin，逗号分隔 |
 | `HTTP_BODY_LIMIT` | `2mb` | JSON 请求体大小上限 |
 
