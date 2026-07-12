@@ -15,7 +15,7 @@ export async function startHttpServer() {
   const path = process.env.MCP_PATH ?? '/mcp';
   const bearerToken = process.env.MCP_AUTH_TOKEN;
   const allowedOrigins = parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
-  const enableJsonResponse = process.env.MCP_JSON_RESPONSE !== 'false';
+  const enableJsonResponse = process.env.MCP_JSON_RESPONSE === 'true';
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`PORT 必须是 1-65535 的整数，当前值: ${process.env.PORT}`);
@@ -66,6 +66,19 @@ export async function startHttpServer() {
     try {
       const sessionId = req.header('mcp-session-id');
       let session = sessionId ? sessions.get(sessionId) : undefined;
+
+      // MCP SDK 对 initialized 通知默认返回 202 text/plain 空响应。
+      // 阿里百炼会拒绝 text/plain，因此使用等价的 202 JSON 媒体类型响应。
+      if (
+        req.method === 'POST' &&
+        req.body?.jsonrpc === '2.0' &&
+        req.body?.method === 'notifications/initialized' &&
+        !('id' in req.body)
+      ) {
+        res.status(202).setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end();
+        return;
+      }
 
       if (!session && req.method === 'POST' && isInitializeRequest(req.body)) {
         const transport = new StreamableHTTPServerTransport({

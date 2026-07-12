@@ -6,7 +6,7 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?请在 .env 中设置 MCP_AUTH_TOKEN}"
-      MCP_JSON_RESPONSE: "${MCP_JSON_RESPONSE:-true}"
+      MCP_JSON_RESPONSE: "${MCP_JSON_RESPONSE:-false}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
     volumes:
       - ./logs:/app/tmp
