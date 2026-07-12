@@ -82,6 +82,22 @@ export async function startHttpServer() {
         session = { transport, server: mcpServer };
       }
 
+      // 部分 MCP 托管平台尚未在后续 POST 中回传 Mcp-Session-Id。
+      // 对这类请求使用一次性的无状态 transport，兼容平台探测且不复用 Server 状态。
+      if (!session && req.method === 'POST' && !sessionId) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+        });
+        const mcpServer = new EaseIMServer();
+        await mcpServer.connect(transport);
+        try {
+          await transport.handleRequest(req, res, req.body);
+        } finally {
+          await transport.close();
+        }
+        return;
+      }
+
       if (!session) {
         res.status(400).json({
           jsonrpc: '2.0',
